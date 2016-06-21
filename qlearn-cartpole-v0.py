@@ -43,7 +43,7 @@ def get_action(s, env):
         
 good_results = 0
 env = gym.make('CartPole-v0')
-#env.monitor.start('/tmp/cartpole-experiment-3')
+#env.monitor.start('tmp/cartpole-experiment')
 for i_episode in range(10000):
     
     observation = env.reset()
