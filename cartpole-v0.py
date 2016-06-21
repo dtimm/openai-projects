@@ -4,7 +4,7 @@ import gym
 
 q_states = {}
 alpha = 0.5
-gamma = 0.25
+gamma = 0.15
 best_ever = 0
 
 def q_func(s, a, r, s_p):
@@ -18,7 +18,7 @@ def q_func(s, a, r, s_p):
 def get_action(s, env):
     if s in q_states.keys():
         # default action is random if nothing is better.
-        best = -1
+        best = -10
         best_act = env.action_space.sample()
         for k, v in q_states[s].iteritems():
             if v > best:
@@ -78,7 +78,8 @@ for i_episode in range(10000):
                 good_results = good_results + 1
 
             if (i_episode + 1) % 50 == 0:
-                print '{} of {}'.format(good_results, i_episode + 1)
+                print '{0:.00%} at {1}'.format(float(good_results) / 50.0, i_episode + 1)
+                good_results = 0
 
             #print("{}, a = {} finished after {} timesteps".format(i_episode, alpha, t+1))
             score = 0
