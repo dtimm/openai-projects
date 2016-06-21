@@ -93,3 +93,6 @@ ENV/
 
 # Video directory
 tmp/
+
+# key file
+api.key

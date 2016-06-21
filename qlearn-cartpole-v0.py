@@ -3,11 +3,13 @@ import random
 import numpy as np
 import gym
 
+# Set initial parameter values.
 q_states = {}
-alpha = 0.5
+alpha = 0.4
 gamma = 0.25
 random_act = 0.5
 
+# Run the Q function to update states.
 def q_func(s, a, r, s_p):
     if s_p not in q_states.keys():
         q_states[s_p] = {}
@@ -17,8 +19,9 @@ def q_func(s, a, r, s_p):
     next_best = max(q_states[s_p].values())
     q_states[s][a] = (1.0 - alpha) * q_states[s][a] + alpha * (r + gamma * next_best)
     
+# Get the next action.
 def get_action(s, env):
-
+    # Occasionally randomness to break it out of a funk.
     if random.random() < random_act:
         return env.action_space.sample()
 
@@ -36,73 +39,78 @@ def get_action(s, env):
         else:
             action = best_act
     else:
-        # 
-        # take a random actions if you've never felt like this before.
+        # Take a random actions if you've never felt like this before.
         action = env.action_space.sample()
+
+        # Initialize this new state.
         q_states[s] = {}
         for act in xrange(env.action_space.n):
             q_states[s][act] = 1
 
     return action
 
-
+# Initial values and logging.
 avg_score = 0
 good_results = 0
 env = gym.make('CartPole-v0')
-#env.monitor.start('tmp/cartpole-experiment-1')
+filename = 'tmp/cartpole-experiment'
+env.monitor.start(filename, force=True)
+
 for i_episode in range(10001):
-    
+    # Reset and note initial state.
     observation = env.reset()
+
+    # State is represented with binned states independent of the environment.
     state = ()
     for val in observation:
-        state += (round(val * 2.5)/2.5, )
-    score = 0
-    #alpha = alpha * 0.95
+        state += (round(val * 4.0)/4.0, )
     
-    for t in range(500):
+    # Run 200 time steps
+    for t in range(200):
         # Save the previous state.
         prev_state = state
         
+        # Pick an action and step forward.
         #env.render()
-        action = get_action(prev_state, env)#env.action_space.sample()
+        action = get_action(prev_state, env)
         observation, reward, done, info = env.step(action)
 
+        # Format the new state.
         state = ()
         for val in observation:
-            state += (round(val * 2.5)/2.5, )
-        
-        if reward > 1.0:
-            print reward
-            
+            state += (round(val * 4.0)/4.0, )
+
+        # Reward agents that meet the threshhold for success, punish others.      
         if done:
-            reward = score - 200
+            reward = t - 195
+
+        # Update Q states.
         q_func(prev_state, action, reward, state)
-        #print(observation)
+        
+        # Check it it's done enough.
+        if done or t == 199:
+            # Track average scores each 100 trials.
+            avg_score += t
 
-        score = score + 1
-
-        #time.sleep(0.05)
-        if done:
-            avg_score += score
-
-            #if score > 75:
-                #best_ever = score
-                #alpha = alpha * 0.85
-
-            if score >= 195:
+            # Log successes
+            if t >= 195:
                 good_results = good_results + 1
-
-            if (i_episode + 1) % 50 == 0:
-                print '{0:.00%} at {1}'.format(float(good_results) / 50.0, i_episode + 1)
-                print '{0} average score'.format(float(avg_score) / 50.0)
+                # Every success reduced the chance of random actions.
+                random_act *= 0.95
+            
+            # Print some debugging/logging information.
+            if (i_episode + 1) % 100 == 0:
+                print '{0:.00%} at {1}'.format(float(good_results) / 100.0, i_episode + 1)
+                print '{0} average score'.format(float(avg_score) / 100.0)
                 
-                random_act *= 0.9
+                # Reduce randomness every 100 trials.
+                random_act *= 0.95
+
+                # Reset per 100 variables.
                 avg_score = 0
                 good_results = 0
 
-            #print("{}, a = {} finished after {} timesteps".format(i_episode, alpha, t+1))
-            score = 0
-            #print q_states
             break
         
-#env.monitor.close()
+env.monitor.close()
+
