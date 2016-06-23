@@ -52,9 +52,9 @@ def get_action(s, env):
 # Initial values and logging.
 avg_score = 0
 good_results = 0
-goal_score = 195
-env = gym.make('CartPole-v0')
-filename = 'tmp/cartpole-experiment'
+goal_score = -110
+env = gym.make('MountainCar-v0')
+filename = 'tmp/mountaincar-experiment'
 #env.monitor.start(filename, force=True)
 
 for i_episode in range(10000):
@@ -65,14 +65,16 @@ for i_episode in range(10000):
     state = ()
     for val in observation:
         state += (round(val * 4.0)/4.0, )
-    
+
+    score = 0
+    done = False
     # Run 200 time steps
-    for t in range(200):
+    while not done:
         # Save the previous state.
         prev_state = state
         
         # Pick an action and step forward.
-        #env.render()
+        env.render()
         action = get_action(prev_state, env)
         observation, reward, done, info = env.step(action)
 
@@ -81,17 +83,18 @@ for i_episode in range(10000):
         for val in observation:
             state += (round(val * 4.0)/4.0, )
 
-        # Reward agents that meet the threshhold for success, punish others.      
+        # Reward agents that meet the threshhold for success, punish others.
+        score += reward    
         if done:
-            reward = t - goal_score
+            reward = score - goal_score
 
         # Update Q states.
         q_func(prev_state, action, reward, state)
         
         # Check it it's done enough.
-        if done:# or t == 199:
+        if done:
             # Track average scores each 100 trials.
-            avg_score += t
+            avg_score += score
 
             # Log successes
             if t >= goal_score:
