@@ -2,13 +2,13 @@ import random
 import gym
 
 Random_Count = 0
-Q_States = {}
 
 def main(argv=None):
     global Random_Count
     # Initial values and logging.
-    alpha = 0.6
-    gamma = 0.25
+    q_states = {}
+    alpha = 0.5
+    gamma = 0.95
     random_act = 0.5
     avg_score = 0
     good_results = 0
@@ -19,26 +19,24 @@ def main(argv=None):
 
     # Run the Q function to update states.
     def q_func(s, a, r, s_p):
-        global Q_States
-        if s_p not in Q_States.keys():
-            Q_States[s_p] = {}
+        if s_p not in q_states.keys():
+            q_states[s_p] = {}
             for act in xrange(env.action_space.n):
-                Q_States[s_p][act] = 1
+                q_states[s_p][act] = 1
         
-        next_best = max(Q_States[s_p].values())
+        next_best = max(q_states[s_p].values())
         
-        Q_States[s][a] = (1.0 - alpha) * Q_States[s][a] + alpha * (r + gamma * next_best)
+        q_states[s][a] = (1.0 - alpha) * q_states[s][a] + alpha * (r + gamma * next_best)
         
     # Get the next action.
     def get_action(s, env):
-        global Q_States
         global Random_Count
     
-        if s in Q_States.keys():
+        if s in q_states.keys():
             # default action is random if nothing is better.
             best = -10
             best_act = env.action_space.sample()
-            for k, v in Q_States[s].iteritems():
+            for k, v in q_states[s].iteritems():
                 if v > best:
                     best = v
                     best_act = k
@@ -49,15 +47,16 @@ def main(argv=None):
             action = env.action_space.sample()
 
             # Initialize this new state.
-            Q_States[s] = {}
+            q_states[s] = {}
 
             for act in xrange(env.action_space.n):
-                Q_States[s][act] = 1
+                q_states[s][act] = 1
 
         # Occasionally randomness to break it out of a funk.
         if random.random() < random_act:
             action = env.action_space.sample()
             Random_Count += 1
+        
         return action
 
     for i_episode in range(5000):
@@ -83,6 +82,7 @@ def main(argv=None):
             
             # Pick an action and step forward.
             next_action = get_action(prev_state, env)
+            
             observation, reward, done, info = env.step(next_action)
             if len(info) > 0:
                 print info
@@ -107,6 +107,9 @@ def main(argv=None):
                 # Track average scores each 100 trials.
                 avg_score += (t + 1)
 
+                # Reduce randomness every trial.
+                random_act *= 0.99
+
                 #alpha *= 0.999
                 # Log successes
                 if t + 1 >= goal_score:
@@ -118,9 +121,6 @@ def main(argv=None):
                 if (i_episode + 1) % 100 == 0:
                     print '{0} average score at {1}, {2}'.format(float(avg_score) / 100.0, i_episode + 1, Random_Count)
                     
-                    # Reduce randomness every 100 trials.
-                    random_act *= 0.8
-
                     # Reset per 100 variables.
                     Random_Count = 0
                     avg_score = 0
