@@ -1,10 +1,7 @@
 import random
 import gym
 
-Random_Count = 0
-
 def main(argv=None):
-    global Random_Count
     # Initial values and logging.
     q_states = {}
     alpha = 0.5
@@ -30,32 +27,39 @@ def main(argv=None):
         
     # Get the next action.
     def get_action(s, env):
-        global Random_Count
     
         if s in q_states.keys():
             # default action is random if nothing is better.
-            best = -10
-            best_act = env.action_space.sample()
-            for k, v in q_states[s].iteritems():
-                if v > best:
-                    best = v
-                    best_act = k
-
-            action = best_act
+            action = max(q_states[s], key=q_states[s].get)
         else:
-            # Take a random actions if you've never felt like this before.
-            action = env.action_space.sample()
+            # Find the most similar state
+            best_diff = -1.0
+            best_state = None
+            for state in q_states.keys():
+                i = 0
+                distance = 0
+                for val in state:
+                    distance += (val - s[i])**2
+                if distance < best_diff or best_state == None:
+                    best_diff = distance
+                    best_state = state
+            
+            if best_state != None:
+                q_states[s] = q_states[best_state]
+                action = max(q_states[s], key=q_states[s].get)
+            else:
+                # Take a random actions if you've never felt like this before.
+                action = env.action_space.sample()
 
-            # Initialize this new state.
-            q_states[s] = {}
+                # Initialize this new state.
+                q_states[s] = {}
 
-            for act in xrange(env.action_space.n):
-                q_states[s][act] = 1
+                for act in xrange(env.action_space.n):
+                    q_states[s][act] = 1
 
         # Occasionally randomness to break it out of a funk.
         if random.random() < random_act:
             action = env.action_space.sample()
-            Random_Count += 1
         
         return action
 
@@ -119,7 +123,7 @@ def main(argv=None):
                 
                 # Print some debugging/logging information.
                 if (i_episode + 1) % 100 == 0:
-                    print '{0} average score at {1}, {2}'.format(float(avg_score) / 100.0, i_episode + 1, Random_Count)
+                    print '{0} average score at {1}, {2} states'.format(float(avg_score) / 100.0, i_episode + 1, len(q_states))
                     
                     # Reset per 100 variables.
                     Random_Count = 0
