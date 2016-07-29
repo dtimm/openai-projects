@@ -1,12 +1,26 @@
 import random
 import gym
+import numpy as np
+
+def softmax(x):
+    e_x = np.exp(x - np.max(x))
+    out = e_x / e_x.sum()
+    return out
+
+def state_from_observation(observation):
+    state = ()
+    for val in observation:
+        temp_value = round(val * 4.0)/4.0
+        if temp_value == -0.0:
+            temp_value = 0.0
+        state += (temp_value, )
+    return state
 
 def main(argv=None):
     # Initial values and logging.
     q_states = {}
     alpha = 0.5
     gamma = 0.95
-    random_act = 0.5
     avg_score = 0
     good_results = 0
     goal_score = 195
@@ -30,7 +44,12 @@ def main(argv=None):
     
         if s in q_states.keys():
             # default action is random if nothing is better.
-            action = max(q_states[s], key=q_states[s].get)
+            values = softmax(q_states[s].values())
+            if random.random() < values[0]:
+                action = 0
+            else:
+                action = 1
+            #action = max(q_states[s], key=q_states[s].get)
         else:
             # Find the most similar state
             best_diff = -1.0
@@ -46,7 +65,7 @@ def main(argv=None):
             
             if best_state != None:
                 q_states[s] = q_states[best_state]
-                action = max(q_states[s], key=q_states[s].get)
+                action = env.action_space.sample()
             else:
                 # Take a random actions if you've never felt like this before.
                 action = env.action_space.sample()
@@ -56,10 +75,6 @@ def main(argv=None):
 
                 for act in xrange(env.action_space.n):
                     q_states[s][act] = 1
-
-        # Occasionally randomness to break it out of a funk.
-        if random.random() < random_act:
-            action = env.action_space.sample()
         
         return action
 
@@ -68,12 +83,7 @@ def main(argv=None):
         observation = env.reset()
 
         # State is represented with binned states independent of the environment.
-        state = ()
-        for val in observation:
-            temp_value = round(val * 4.0)/4.0
-            if temp_value == -0.0:
-                temp_value = 0.0
-            state += (temp_value, )
+        state = state_from_observation(observation)
         
         
         # Run 200 time steps
@@ -92,12 +102,7 @@ def main(argv=None):
                 print info
 
             # Format the new state.
-            state = ()
-            for val in observation:
-                temp_value = round(val * 4.0)/4.0
-                if temp_value == -0.0:
-                    temp_value = 0.0
-                state += (temp_value, )
+            state = state_from_observation(observation)
 
             # Reward agents that meet the threshhold for success, punish others.      
             if done:
@@ -111,9 +116,6 @@ def main(argv=None):
                 # Track average scores each 100 trials.
                 avg_score += (t + 1)
 
-                # Reduce randomness every trial.
-                random_act *= 0.99
-
                 #alpha *= 0.999
                 # Log successes
                 if t + 1 >= goal_score:
@@ -126,7 +128,6 @@ def main(argv=None):
                     print '{0} average score at {1}, {2} states'.format(float(avg_score) / 100.0, i_episode + 1, len(q_states))
                     
                     # Reset per 100 variables.
-                    Random_Count = 0
                     avg_score = 0
                     good_results = 0
 
